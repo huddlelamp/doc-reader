@@ -44,7 +44,7 @@ Template.deviceIndicators.deviceSizeAndPositionCSS = function() {
     //The other coordinate is simply set so that half the indicator is visible,
     //which gives us a nice half-circle
     //Furthermore, we calculate the indicator size based on the distance
-    var MIN_INDICATOR_SIZE = 70;
+    var MIN_INDICATOR_SIZE = 100;
     var CLOSENESS_INDICATOR_EXPAND = 50;
     var top;
     var right;
