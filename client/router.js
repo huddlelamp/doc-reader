@@ -5,45 +5,61 @@ if (Meteor.isClient) {
     loadingTemplate: 'loading'
   });
 
-  Router.map(function() {
+  Router.route('/', {
+    name: 'search.index',
+    template: 'searchIndex'
+  });
 
-    this.route('searchIndex', {
-      path: '/'
-    });
+  Router.route('/search/:_query?/:_page?', {
 
-    this.route('searchIndex', {
-      path: '/search/:_query?/:_page?',
-      waitOn : function() {
-        return Meteor.subscribe('index-settings') && Meteor.subscribe('past-queries');
-      },
-      action : function() {
-        if (this.ready()) {
-          this.render();
-        }
-      }
-    });
+    name: 'search.index.query',
 
-    this.route('snippets', {
-      path: '/snippets'
-    });
+    template: 'searchIndex',
 
-    this.route('task', {
-      path: '/task'
-    });
-    this.route('accounts', {
-      path: '/admin/accounts'
-    });
+    waitOn : function() {
+      return Meteor.subscribe('index-settings') && Meteor.subscribe('past-queries');
+    },
 
-    this.route('index', {
-      path: '/admin/index'
-    });
+    data: function() {
+      var query = this.params._query;
+      var page = this.params._page;
 
-    // this.route('settings', {
-    //   path: '/admin/settings'
-    // });
+      Session.set('lastQuery', query);
+      Session.set('lastQueryPage', page);
 
-    this.route('notFound', {
-      path: '*'
-    });
+      // return {
+      //   query: query,
+      //   page: page
+      // }
+    },
+
+    action : function() {
+      this.render();
+    }
+  });
+
+  Router.route('/snippets', {
+    name: 'snippets',
+    template: 'snippets'
+  });
+
+  Router.route('/task', {
+    name: 'task',
+    template: 'task'
+  });
+
+  Router.route('/admin/accounts', {
+    name: 'admin.accounts',
+    template: 'accounts'
+  });
+
+  Router.route('/admin/index', {
+    name: 'admin.index',
+    template: 'index'
+  });
+
+  Router.route('*', {
+    name: 'not.found',
+    template: 'notFound'
   });
 }

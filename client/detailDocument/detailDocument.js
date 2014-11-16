@@ -32,7 +32,7 @@ var insertHighlightIntoDOM = function(elem, highlight, state) {
       state.opened = true;
 
       //Highlight start is defined by startOffset, highlightEnd depends on
-      //if the highlight ends in this node or goes beyond this node (in which 
+      //if the highlight ends in this node or goes beyond this node (in which
       //case it might be continued in CASE 3 and will be closed in CASE 2)
       var highlightStart = startOffset - (state.offset - elem.length);
       var highlightEnd = elem.length;
@@ -42,9 +42,9 @@ var insertHighlightIntoDOM = function(elem, highlight, state) {
       }
 
       $(elem).replaceWith(insertHighlightIntoText(
-        $(elem).text(), 
-        highlight, 
-        highlightStart, 
+        $(elem).text(),
+        highlight,
+        highlightStart,
         highlightEnd,
         state.cssClasses
       ));
@@ -58,9 +58,9 @@ var insertHighlightIntoDOM = function(elem, highlight, state) {
           var highlightEnd = endOffset - (state.offset - elem.length);
 
           $(elem).replaceWith(insertHighlightIntoText(
-            $(elem).text(), 
-            highlight, 
-            highlightStart, 
+            $(elem).text(),
+            highlight,
+            highlightStart,
             highlightEnd,
             state.cssClasses
           ));
@@ -70,9 +70,9 @@ var insertHighlightIntoDOM = function(elem, highlight, state) {
           //CASE 3: the entire node is part of the highlight, it doesn't end here
           //Therefore, the entire node needs to be highlighted
           $(elem).replaceWith(insertHighlightIntoText(
-            $(elem).text(), 
-            highlight, 
-            0, 
+            $(elem).text(),
+            highlight,
+            0,
             elem.length,
             state.cssClasses
           ));
@@ -99,219 +99,221 @@ var insertTextHighlights = function(textHighlights, docContent) {
   }
 };
 
-Template.detailDocumentTemplate.content = function() {
-  return Session.get("content") || "";
-};
+Template.detailDocumentTemplate.helpers({
+  content: function() {
+    return Session.get("content") || "";
+  },
 
-Template.detailDocumentTemplate.contentEvent = function() {
-  var doc = Session.get("detailDocument");
-  if (doc === undefined) return undefined;
+  contentEvent: function() {
+    var doc = Session.get("detailDocument");
+    if (doc === undefined) return undefined;
 
-  var contentType = doc._source._content_type;
-  var meta = DocumentMeta.findOne({_id: this._id});
-  if (contentType == "image/jpeg") {
-    Session.set('content', '<img src="data:' + contentType + ';base64,' + doc._source.file + '" />')
-  } else if (contentType == "application/vnd.ms-excel") {
-    var that = this;
-    Meteor.call("getOfficeContent", "excel", doc._source.file, function(err, data) {
-      function getCellValue(cell) {
-        if (data.Sheets[data.SheetNames[0]][cell] === undefined) return "";
-        return data.Sheets[data.SheetNames[0]][cell].w;
-      }
-
-      function getCellType(cell) {
-        if (data.Sheets[data.SheetNames[0]][cell] === undefined) return "s";
-        return data.Sheets[data.SheetNames[0]][cell].t;
-      }
-
-      function getCellColumn(cell) {
-        return cell.replace(/([A-Z]+)[0-9]+/ig, "$1");
-      }
-
-      function getCellRow(cell) {
-        return cell.replace(/[A-Z]+([0-9]+)/ig, "$1");
-      }
-
-      function incrementColumn(column, pos) {
-        if (pos === undefined) pos = column.length-1;
-
-        var theChar = column.substr(pos, 1);
-
-        if (theChar == "Z") {
-          if (pos === 0) {
-            //The first character is a Z
-            //We need to make every character an A and append an additional one
-            var result = "A";
-            for (var i=0; i<column.length; i++) {
-              result += "A";
-            }
-            return result;
-          } else {
-            //We reached a Z in the current position, make it an A and increment the position before it
-            var newColumn = column.substr(0, pos) + "A" + column.substr(pos+1);
-            return incrementColumn(newColumn, pos-1);
-          }
+    var contentType = doc._source._content_type;
+    var meta = DocumentMeta.findOne({_id: this._id});
+    if (contentType == "image/jpeg") {
+      Session.set('content', '<img src="data:' + contentType + ';base64,' + doc._source.file + '" />')
+    } else if (contentType == "application/vnd.ms-excel") {
+      var that = this;
+      Meteor.call("getOfficeContent", "excel", doc._source.file, function(err, data) {
+        function getCellValue(cell) {
+          if (data.Sheets[data.SheetNames[0]][cell] === undefined) return "";
+          return data.Sheets[data.SheetNames[0]][cell].w;
         }
-        else {
-          //Replace the character at pos with the next character
-          var nextChar = String.fromCharCode(theChar.charCodeAt(0)+1);
-          return column.substr(0, pos) + nextChar + column.substr(pos+1);
+
+        function getCellType(cell) {
+          if (data.Sheets[data.SheetNames[0]][cell] === undefined) return "s";
+          return data.Sheets[data.SheetNames[0]][cell].t;
         }
-      }
 
-      //Parse the excel data
-      //First, get the smallest and largest field in the sheet
-      var smallestRow = 1;
-      var smallestColumn = "A";
-      var largestField = data.Sheets[data.SheetNames[0]]["!ref"].split(":")[1];
-      var largestRow = getCellRow(largestField);
-      var largestColumn = getCellColumn(largestField);
-
-      //Now, walk over every possible cell and print its value
-      var content = $('<table></table>');
-      content.addClass("excelsheet");
-
-      //Create the column headings
-      var headingRow = $("<tr></tr>");
-      headingRow.append("<th></th>");
-      for (var c=smallestColumn; c!=incrementColumn(largestColumn); c=incrementColumn(c)) {
-        headingRow.append("<th>"+c+"</th>");
-      }
-      content.append(headingRow);
-      
-      for (var r=smallestRow; r<=largestRow; r++) {
-        var row = $("<tr></tr>");
-        // content += "<tr>";
-        row.append("<th>"+r+"</th>"); //row heading
-
-        for (var c=smallestColumn; c!=incrementColumn(largestColumn); c=incrementColumn(c)) {
-          var td = $("<td></td>");
-          td.html(getCellValue(c+r));
-          td.addClass("type"+getCellType(c+r));
-          row.append(td);
-          // row.append("<td>"+getCellValue(c+r)+"</td>");
+        function getCellColumn(cell) {
+          return cell.replace(/([A-Z]+)[0-9]+/ig, "$1");
         }
-        content.append(row);
-        // content += "</tr>";
-      }
-      // content += "</table>";
 
-      insertTextHighlights(meta.textHighlights, content[0]);
-      // insertTextHighlights(that._id, content[0]);
+        function getCellRow(cell) {
+          return cell.replace(/[A-Z]+([0-9]+)/ig, "$1");
+        }
 
-      Session.set('content', content[0].outerHTML);
-    });
-  } else if (contentType === "application/msword") {
-    Meteor.call("getOfficeContent", "word", doc._source.file, function(err, data) {
-      var tempContent = $("<div />").html(data);
-      insertTextHighlights(meta.textHighlights, tempContent[0]);
-      Session.set("content", tempContent.html());
-    });
-  } else {
-    var content = atob(doc._source.file);
+        function incrementColumn(column, pos) {
+          if (pos === undefined) pos = column.length-1;
 
-    if (content.length < 1) return "";
+          var theChar = column.substr(pos, 1);
 
-    var lastQuery = Session.get("lastQuery");
-    if (lastQuery !== undefined) {
-      processQuery(lastQuery, function(term, isNegated, isPhrase) {
-        if (isNegated) return;
-        content = content.replace(new RegExp("("+term+")", "gi"), "<em>$1</em>");
-      });
-    }
-
-    //Add the snippet highlight and text highlights if necessary
-    //In order to be able to count the text chars only (without html tags)
-    //we create a temporary element that we can walk over and find text nodes
-    var tempContent = $("<div />").html(content);
-
-    insertTextHighlights(meta.textHighlights, tempContent[0]);
-
-    //PREVIEW SNIPPET
-    var snippet = Session.get('detailDocumentPreviewSnippet');
-    if (!lockPreviewSnippet && snippet && snippet.length > 0) {
-      //for some reason, if the snippet is at the very end of the file content it 
-      //has an additional line break at the end. Because of that, remove line ends
-      //from the end of the snippet
-      snippet = $("<span />").html(snippet).text();
-      var endsWithBreak = snippet.indexOf(String.fromCharCode(0x0A), snippet.length-1) !== -1;
-      if (endsWithBreak) snippet = snippet.slice(0, snippet.length-1);
-
-      var startOffset = tempContent.text().indexOf(snippet);
-      var endOffset = startOffset + snippet.length;
-      if (startOffset >= 0 && endOffset >= 0) {
-        //Create a fake highlight and add it to the text
-        var fakeHighlight = [startOffset, endOffset, "transparent"];
-        insertHighlightIntoDOM(tempContent[0], fakeHighlight, { cssClasses: "previewSnippet" });
-
-        //Remember the current popup ID. For the timeouts, we check if the ID
-        //changed - if so the popup was closed and/or reopened and we shouldn't
-        //perform the snippet animations
-        var currentID = popupID;
-
-        //Fade in and out the preview snippet
-        Meteor.setTimeout(function() {
-          if (currentID === popupID) {
-            $(".highlight.previewSnippet").first().scrollintoview({
-              duration: "normal",
-              complete: function() {
-                if (currentID === popupID) {
-                  $(".highlight.previewSnippet").css("background-color", "rgba(255,0,0,1.0)");
-                  $(".highlight.previewSnippet").css("color", "white");
-
-                  Meteor.setTimeout(function() {
-                    if (currentID === popupID) {
-                      $(".highlight.previewSnippet").css("background-color", "transparent");
-                      $(".highlight.previewSnippet").css("color", "");
-
-                      //After the fade-out we lock the snippet so it will not be shown again
-                      Meteor.setTimeout(function() { 
-                        if (currentID === popupID) {
-                          lockPreviewSnippet = true;
-                        }
-                      }, 1000);
-                    }
-                  }, 2500);
-                }
+          if (theChar == "Z") {
+            if (pos === 0) {
+              //The first character is a Z
+              //We need to make every character an A and append an additional one
+              var result = "A";
+              for (var i=0; i<column.length; i++) {
+                result += "A";
               }
-            });
+              return result;
+            } else {
+              //We reached a Z in the current position, make it an A and increment the position before it
+              var newColumn = column.substr(0, pos) + "A" + column.substr(pos+1);
+              return incrementColumn(newColumn, pos-1);
+            }
           }
-        }, 1000);
+          else {
+            //Replace the character at pos with the next character
+            var nextChar = String.fromCharCode(theChar.charCodeAt(0)+1);
+            return column.substr(0, pos) + nextChar + column.substr(pos+1);
+          }
+        }
+
+        //Parse the excel data
+        //First, get the smallest and largest field in the sheet
+        var smallestRow = 1;
+        var smallestColumn = "A";
+        var largestField = data.Sheets[data.SheetNames[0]]["!ref"].split(":")[1];
+        var largestRow = getCellRow(largestField);
+        var largestColumn = getCellColumn(largestField);
+
+        //Now, walk over every possible cell and print its value
+        var content = $('<table></table>');
+        content.addClass("excelsheet");
+
+        //Create the column headings
+        var headingRow = $("<tr></tr>");
+        headingRow.append("<th></th>");
+        for (var c=smallestColumn; c!=incrementColumn(largestColumn); c=incrementColumn(c)) {
+          headingRow.append("<th>"+c+"</th>");
+        }
+        content.append(headingRow);
+
+        for (var r=smallestRow; r<=largestRow; r++) {
+          var row = $("<tr></tr>");
+          // content += "<tr>";
+          row.append("<th>"+r+"</th>"); //row heading
+
+          for (var c=smallestColumn; c!=incrementColumn(largestColumn); c=incrementColumn(c)) {
+            var td = $("<td></td>");
+            td.html(getCellValue(c+r));
+            td.addClass("type"+getCellType(c+r));
+            row.append(td);
+            // row.append("<td>"+getCellValue(c+r)+"</td>");
+          }
+          content.append(row);
+          // content += "</tr>";
+        }
+        // content += "</table>";
+
+        insertTextHighlights(meta.textHighlights, content[0]);
+        // insertTextHighlights(that._id, content[0]);
+
+        Session.set('content', content[0].outerHTML);
+      });
+    } else if (contentType === "application/msword") {
+      Meteor.call("getOfficeContent", "word", doc._source.file, function(err, data) {
+        var tempContent = $("<div />").html(data);
+        insertTextHighlights(meta.textHighlights, tempContent[0]);
+        Session.set("content", tempContent.html());
+      });
+    } else {
+      var content = atob(doc._source.file);
+
+      if (content.length < 1) return "";
+
+      var lastQuery = Session.get("lastQuery");
+      if (lastQuery !== undefined) {
+        processQuery(lastQuery, function(term, isNegated, isPhrase) {
+          if (isNegated) return;
+          content = content.replace(new RegExp("("+term+")", "gi"), "<em>$1</em>");
+        });
       }
+
+      //Add the snippet highlight and text highlights if necessary
+      //In order to be able to count the text chars only (without html tags)
+      //we create a temporary element that we can walk over and find text nodes
+      var tempContent = $("<div />").html(content);
+
+      insertTextHighlights(meta.textHighlights, tempContent[0]);
+
+      //PREVIEW SNIPPET
+      var snippet = Session.get('detailDocumentPreviewSnippet');
+      if (!lockPreviewSnippet && snippet && snippet.length > 0) {
+        //for some reason, if the snippet is at the very end of the file content it
+        //has an additional line break at the end. Because of that, remove line ends
+        //from the end of the snippet
+        snippet = $("<span />").html(snippet).text();
+        var endsWithBreak = snippet.indexOf(String.fromCharCode(0x0A), snippet.length-1) !== -1;
+        if (endsWithBreak) snippet = snippet.slice(0, snippet.length-1);
+
+        var startOffset = tempContent.text().indexOf(snippet);
+        var endOffset = startOffset + snippet.length;
+        if (startOffset >= 0 && endOffset >= 0) {
+          //Create a fake highlight and add it to the text
+          var fakeHighlight = [startOffset, endOffset, "transparent"];
+          insertHighlightIntoDOM(tempContent[0], fakeHighlight, { cssClasses: "previewSnippet" });
+
+          //Remember the current popup ID. For the timeouts, we check if the ID
+          //changed - if so the popup was closed and/or reopened and we shouldn't
+          //perform the snippet animations
+          var currentID = popupID;
+
+          //Fade in and out the preview snippet
+          Meteor.setTimeout(function() {
+            if (currentID === popupID) {
+              $(".highlight.previewSnippet").first().scrollintoview({
+                duration: "normal",
+                complete: function() {
+                  if (currentID === popupID) {
+                    $(".highlight.previewSnippet").css("background-color", "rgba(255,0,0,1.0)");
+                    $(".highlight.previewSnippet").css("color", "white");
+
+                    Meteor.setTimeout(function() {
+                      if (currentID === popupID) {
+                        $(".highlight.previewSnippet").css("background-color", "transparent");
+                        $(".highlight.previewSnippet").css("color", "");
+
+                        //After the fade-out we lock the snippet so it will not be shown again
+                        Meteor.setTimeout(function() {
+                          if (currentID === popupID) {
+                            lockPreviewSnippet = true;
+                          }
+                        }, 1000);
+                      }
+                    }, 2500);
+                  }
+                }
+              });
+            }
+          }, 1000);
+        }
+      }
+
+      content = tempContent.html();
+      Session.set("content", encodeContent(content));
     }
+  },
 
-    content = tempContent.html();
-    Session.set("content", encodeContent(content));
+  comment: function() {
+    var meta = DocumentMeta.findOne({_id: this._id});
+    if (meta) return meta.comment;
+    return "";
+  },
+
+  isFavorited: function() {
+    var meta = DocumentMeta.findOne({_id: this._id});
+    return (meta && meta.favorited);
+  },
+
+  deviceColorCSS: function() {
+    var info = DeviceInfo.findOne({ _id: this.id });
+    if (info === undefined || !info.colorDeg) return "";
+
+    var color = window.degreesToColor(info.colorDeg);
+
+    return 'color: rgb('+color.r+', '+color.g+', '+color.b+');';
+  },
+
+  document: function() {
+    return Session.get("detailDocument") || undefined;
+  },
+
+  otherDevices: function() {
+    return Session.get("otherDevices") || [];
   }
-};
-
-Template.detailDocumentTemplate.comment = function() {
-  var meta = DocumentMeta.findOne({_id: this._id});
-  if (meta) return meta.comment;
-  return "";
-};
-
-Template.detailDocumentTemplate.isFavorited = function() {
-  var meta = DocumentMeta.findOne({_id: this._id});
-  return (meta && meta.favorited);
-};
-
-Template.detailDocumentTemplate.deviceColorCSS = function() {
-  var info = DeviceInfo.findOne({ _id: this.id });
-  if (info === undefined || !info.colorDeg) return "";
-
-  var color = window.degreesToColor(info.colorDeg);
-
-  return 'color: rgb('+color.r+', '+color.g+', '+color.b+');';
-};
-
-Template.detailDocumentTemplate.document = function() {
-  return Session.get("detailDocument") || undefined;
-};
-
-Template.detailDocumentTemplate.otherDevices = function() {
-  return Session.get("otherDevices") || [];
-};
+});
 
 
 //
@@ -329,7 +331,7 @@ Template.detailDocumentTemplate.open = function(doc, snippetText) {
   //arriving in an unfinished state, which looks kinda ugly
   lockPreviewSnippet = false;
   Session.set("detailDocumentPreviewSnippet", snippetText);
-  Session.set("detailDocument", doc); 
+  Session.set("detailDocument", doc);
 
   Meteor.setTimeout(function() {
     $.fancybox({
@@ -339,9 +341,9 @@ Template.detailDocumentTemplate.open = function(doc, snippetText) {
       beforeLoad: function() {
         lockPreviewSnippet = false;
         Session.set("detailDocumentPreviewSnippet", snippetText);
-        Session.set("detailDocument", doc); 
+        Session.set("detailDocument", doc);
       },
-      afterLoad: function() { 
+      afterLoad: function() {
         //Dirty hack: 500ms delay so we are pretty sure that all DOM elements arrived
         Meteor.setTimeout(function() {
           attachEvents();
@@ -367,13 +369,13 @@ Template.detailDocumentTemplate.open = function(doc, snippetText) {
       afterClose: function() {
         lockPreviewSnippet = false;
         Session.set("detailDocumentPreviewSnippet", undefined);
-        Session.set("detailDocument", undefined); 
+        Session.set("detailDocument", undefined);
 
         var thisDevice = Session.get('thisDevice');
-        Logs.insert({ 
+        Logs.insert({
           timestamp       : Date.now(),
-          route           : Router.current().route.name,
-          deviceID        : thisDevice.id,  
+          route           : Router.current().route.getName(),
+          deviceID        : thisDevice.id,
           actionType      : "closeDocument",
           documentID      : doc._id,
         });
@@ -381,10 +383,10 @@ Template.detailDocumentTemplate.open = function(doc, snippetText) {
     });
 
     var thisDevice = Session.get('thisDevice');
-    Logs.insert({ 
+    Logs.insert({
       timestamp       : Date.now(),
-      route           : Router.current().route.name,
-      deviceID        : thisDevice.id,  
+      route           : Router.current().route.getName(),
+      deviceID        : thisDevice.id,
       actionType      : "openDocument",
       documentID      : doc._id,
       selectedSnippet : $("<span />").html(snippetText).text()
@@ -418,8 +420,8 @@ var attachEvents = function() {
     var thisDevice = Session.get('thisDevice');
     Logs.insert({
       timestamp    : Date.now(),
-      route        : Router.current().route.name,
-      deviceID     : thisDevice.id,  
+      route        : Router.current().route.getName(),
+      deviceID     : thisDevice.id,
       actionType   : "toggledDocumentFavorite",
       actionSource : "documentDetails",
       documentID   : doc._id,
@@ -432,7 +434,7 @@ var attachEvents = function() {
     //See "prepareWorldView" for the reason why we need this
     addHighlightSelection = getContentSelection();
   };
-  
+
   var addHighlight = function(e) {
     // var selection = getContentSelection();
     var selection = addHighlightSelection;
@@ -453,7 +455,7 @@ var attachEvents = function() {
       for (var i = 0; i < meta.textHighlights.length; i++) {
         var highlight = meta.textHighlights[i];
         var intersection = rangeIntersection(startOffset, endOffset, highlight[0], highlight[1]);
-        
+
         //If the highlight is not intersected, keep it as it is
         if (intersection === undefined) {
           updatedHighlights.push(highlight);
@@ -470,13 +472,13 @@ var attachEvents = function() {
         }
 
         //If the entire highlight is intersected, it is removed (= not kept)
-        if (intersection[0] === highlight[0] && 
+        if (intersection[0] === highlight[0] &&
           intersection[1] === highlight[1]) {
           continue;
         }
 
         //If the intersection is in the middle of the highlight, we need to split it
-        if (intersection[0] > highlight[0] && 
+        if (intersection[0] > highlight[0] &&
           intersection[1] < highlight[1]) {
           var left = highlight.slice(0);
           var right = highlight.slice(0);
@@ -488,14 +490,14 @@ var attachEvents = function() {
         }
 
         //If the start of the existing highlight is intersected, cut that part away
-        if (intersection[0] === highlight[0] && 
+        if (intersection[0] === highlight[0] &&
           intersection[1] < highlight[1]) {
           highlight[0] = intersection[1];
           updatedHighlights.push(highlight);
         }
 
         //If the end of the existing highlight is intersected, cut that part away
-        if (intersection[0] > highlight[0] && 
+        if (intersection[0] > highlight[0] &&
           intersection[1] === highlight[1]) {
           highlight[1] = intersection[0];
           updatedHighlights.push(highlight);
@@ -512,8 +514,8 @@ var attachEvents = function() {
     var thisDevice = Session.get('thisDevice');
     Logs.insert({
       timestamp    : Date.now(),
-      route        : Router.current().route.name,
-      deviceID     : thisDevice.id,  
+      route        : Router.current().route.getName(),
+      deviceID     : thisDevice.id,
       actionType   : "addedDocumentHighlight",
       actionSource : "detailDocument",
       documentID   : doc._id,
@@ -521,8 +523,8 @@ var attachEvents = function() {
       documentHighlights : updatedHighlights
     });
   };
-  
-  
+
+
   var deleteHighlights = function(e) {
     e.preventDefault();
 
@@ -536,7 +538,7 @@ var attachEvents = function() {
 
       var highlightsString = (count === 1) ? 'highlight' : 'highlights';
       var content = $("<span>Do you want to remove <b>"+count+"</b> text "+highlightsString+"?<br/><br />");
-      
+
       var yesButton = $("<button />");
       yesButton.html("<span class='glyphicon glyphicon-trash'></span> Yes, remove");
       yesButton.addClass("btn btn-danger noDeviceCustomization popupClickable");
@@ -581,8 +583,8 @@ var attachEvents = function() {
       var thisDevice = Session.get('thisDevice');
       Logs.insert({
         timestamp    : Date.now(),
-        route        : Router.current().route.name,
-        deviceID     : thisDevice.id,  
+        route        : Router.current().route.getName(),
+        deviceID     : thisDevice.id,
         actionType   : "changedDocumentComment",
         actionSource : "detailDocument",
         documentID   : doc._id,
@@ -675,8 +677,8 @@ var showSharePopup = function(el, source) {
         var thisDevice = Session.get('thisDevice');
         Logs.insert({
           timestamp       : Date.now(),
-          route           : Router.current().route.name,
-          deviceID        : thisDevice.id,  
+          route           : Router.current().route.getName(),
+          deviceID        : thisDevice.id,
           actionType      : "shareSnippet",
           actionSource    : "detailDocument",
           actionSubsource : source,
@@ -693,8 +695,8 @@ var showSharePopup = function(el, source) {
           var thisDevice = Session.get('thisDevice');
           Logs.insert({
             timestamp       : Date.now(),
-            route           : Router.current().route.name,
-            deviceID        : thisDevice.id,  
+            route           : Router.current().route.getName(),
+            deviceID        : thisDevice.id,
             actionType      : "shareDocument",
             actionSource    : "detailDocument",
             actionSubsource : source,
@@ -704,10 +706,10 @@ var showSharePopup = function(el, source) {
         }
       }
 
-      hidePopover(el);      
+      hidePopover(el);
     });
     content.append(link);
-  } 
+  }
 
   showPopover(el, content, {placement: "top", container: "body"});
 };
@@ -719,7 +721,7 @@ var showSharePopup = function(el, source) {
 
 var getContentSelection = function() {
   var selection = rangy.getSelection(0);
-  
+
   if (selection.rangeCount === 0 || selection.isCollapsed) {
     return undefined;
   } else {
@@ -737,7 +739,7 @@ var selectionRelativeTo = function(selection, elem) {
   //start/endnode of the selection.
   var startOffset = 0;
   var endOffset = 0;
-  var currentOffset = 0;  
+  var currentOffset = 0;
   var doneStart = false;
   var doneEnd = false;
 
@@ -752,7 +754,7 @@ var selectionRelativeTo = function(selection, elem) {
       doneEnd = true;
     }
 
-    if (doneStart && doneEnd) return; 
+    if (doneStart && doneEnd) return;
 
     if (this.nodeType === 3)  currentOffset += this.length;
     else                      $(this).contents().each(countRecursive);
@@ -790,7 +792,7 @@ var rangeIntersection = function(s1, e1, s2, e2) {
 
 //
 // SELECTION AND HIGHLIGHTS
-// 
+//
 
 var countSelectedHighlights = function(selection) {
   if (selection === undefined) selection = getContentSelection();
@@ -848,8 +850,8 @@ var deleteSelectedHighlights = function(selection) {
   var thisDevice = Session.get('thisDevice');
   Logs.insert({
     timestamp  : Date.now(),
-    route      : Router.current().route.name,
-    deviceID   : thisDevice.id,  
+    route      : Router.current().route.getName(),
+    deviceID   : thisDevice.id,
     actionType : "deletedDocumentHighlights",
     actionSource : "documentDetails",
     documentID : doc._id,
@@ -937,7 +939,7 @@ window.UIMenuController = {};
 window.UIMenuController.menuItems = [
   {
     title: "Share",
-    action: function() { 
+    action: function() {
       //For some reason, not deferring this code might make it hang on the
       //second execute :/
       Meteor.setTimeout(function() {
@@ -952,7 +954,7 @@ window.UIMenuController.menuItems = [
         showSharePopup($("#sharePopupAnchor"), "popout");
       }, 1);
     },
-    canPerform: function() { 
+    canPerform: function() {
       var selection = getContentSelection();
       if (selection !== undefined || selection.length > 0) return true;
 

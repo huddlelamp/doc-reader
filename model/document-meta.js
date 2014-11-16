@@ -9,8 +9,8 @@ DocumentMeta._upsert = function(id, changes) {
       favorited : false
     };
     DocumentMeta.insert(newDoc);
-  } 
-  
+  }
+
   return DocumentMeta.update(id, changes);
 };
 

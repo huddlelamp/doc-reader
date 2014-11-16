@@ -9,6 +9,9 @@ if (Meteor.isClient) {
 
     page = parseInt(page);
 
+    console.log(query);
+    console.log(page);
+
     Session.set('querySuggestions', []);
 
     var must = [];
@@ -34,7 +37,7 @@ if (Meteor.isClient) {
     if (must.length > 0) bool.must = must;
     if (must_not.length > 0) bool.must_not = must_not;
 
-    console.log(bool);
+    // console.log(bool);
 
     var q = {
       fields: ["file", "name"],
@@ -48,7 +51,7 @@ if (Meteor.isClient) {
         }
       }
     };
-    console.log(q);
+    // console.log(q);
 
     ElasticSearch.query(q, function(err, result) {
       if (err) {
@@ -104,7 +107,7 @@ if (Meteor.isClient) {
 
         Logs.insert({
           timestamp       : Date.now(),
-          route           : Router.current().route.name,
+          route           : Router.current().route.getName(),
           deviceID        : thisDevice ? thisDevice.id : 'unknown',
           actionType      : "search",
           query           : query,
@@ -115,8 +118,25 @@ if (Meteor.isClient) {
     });
   };
 
+  var reflectURL = function() {
+
+    var controller = Iron.controller();
+
+    //If we have some parameters for search passed to us, do the appropiate search
+    var query = controller && controller.params._query ? decodeURIComponent(controller.params._query) : undefined;
+    var page = controller && controller.params._page ? decodeURIComponent(controller.params._page) : undefined;
+
+    if (query !== undefined) {
+      if (page === undefined) page = 1;
+
+      $('#search-query').val(query);
+      search(query, page);
+    }
+  };
+
   Template.searchIndex.rendered = function() {
-    Template.searchIndex.reflectURL();
+
+    reflectURL();
 
     $("body").on("mouseup", function(e) {
       Session.set('querySuggestions', []);
@@ -126,11 +146,7 @@ if (Meteor.isClient) {
   Template.searchIndex.helpers({
 
     results: function() {
-      var results = Session.get("results") || [];
-
-      console.log(results);
-
-      return results;
+      return Session.get("results") || [];
     },
 
     querySuggestions: function() {
@@ -194,10 +210,8 @@ if (Meteor.isClient) {
       } else {
         return "500px";
       }
-    }
-  });
+    },
 
-  Template.searchIndex.helpers({
     toSeconds: function(ms) {
       var time = new Date(ms);
       return time.getSeconds() + "." + time.getMilliseconds();
@@ -218,6 +232,10 @@ if (Meteor.isClient) {
       if (number === 1) return singular;
       return plural;
     },
+
+    reflectURL: function() {
+      reflectURL();
+    }
   });
 
   Template.searchIndex.events({
@@ -276,8 +294,8 @@ if (Meteor.isClient) {
 
       var query = $(e.currentTarget).attr("query");
       var page = $(e.currentTarget).attr("page");
-      Router.go('searchIndex', {_query: query, _page: page});
-      Template.searchIndex.reflectURL();
+
+      Router.go('search.index.query', { _query: query, _page: page });
     },
 
     'click .toggleFavorited': function(e, tmpl) {
@@ -290,7 +308,7 @@ if (Meteor.isClient) {
       var thisDevice = Session.get('thisDevice');
       Logs.insert({
         timestamp    : Date.now(),
-        route        : Router.current().route.name,
+        route        : Router.current().route.getName(),
         deviceID     : thisDevice.id,
         actionType   : "toggledDocumentFavorite",
         actionSource : "search",
@@ -324,23 +342,6 @@ if (Meteor.isClient) {
   });
 }
 
-//
-// "PUBLIC"
-//
-
-Template.searchIndex.reflectURL = function() {
-  //If we have some parameters for search passed to us, do the appropiate search
-  var query = Router._currentController.params._query ? decodeURIComponent(Router._currentController.params._query) : undefined;
-  var page = Router._currentController.params._page ? decodeURIComponent(Router._currentController.params._page) : undefined;
-
-  if (query !== undefined) {
-    if (page === undefined) page = 1;
-
-    $('#search-query').val(query);
-    search(query, page);
-  }
-};
-
 
 //
 // PAGINATION
@@ -349,7 +350,11 @@ Template.searchIndex.reflectURL = function() {
 Template.pagination.helpers({
 
   currentQuery: function() {
-    return Session.get('lastQuery') || undefined;
+    var lastQuery =  Session.get('lastQuery') || undefined;
+
+    console.log(lastQuery);
+
+    return lastQuery;
   },
 
   currentPage: function() {

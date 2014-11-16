@@ -1,4 +1,4 @@
-IndexSettings = new Meteor.Collection("index-settings");
+IndexSettings = new Mongo.Collection("index-settings");
 
 IndexSettings.getActiveIndex = function() {
   var settings = IndexSettings.findOne({ name: "default" });

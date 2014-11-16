@@ -1,13 +1,4 @@
 if (Meteor.isClient) {
-  Template.navigation.helpers({
-    "active": function(path) {
-      var router = Router.current();
-      if (router && router.route.name === path) {
-        return "active";
-      }
-      return "";
-    }
-  });
 
   window.huddle = undefined;
   var huddleHost = Meteor.settings.public.huddle.host;
@@ -154,8 +145,9 @@ if (Meteor.isClient) {
     var thisDevice = Session.get('thisDevice');
     if (data.target !== thisDevice.id) return;
 
-    Router.go(data.template, data.params);
-    Template.searchIndex.reflectURL();
+    Router.go(data.route, data.params);
+
+    reflectURL();
   });
 }
 

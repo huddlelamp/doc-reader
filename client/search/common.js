@@ -6,8 +6,8 @@ processQuery = function(query, mapFunction) {
   var not = false;
 
   //Extract the terms of the query, set each terms attribute and call the callback
-  //Possible modifiers: 
-  //'-' before a term negates it 
+  //Possible modifiers:
+  //'-' before a term negates it
   //Single or double quotes around space-seperated terms combine them into a phrase
   for (var i = 0; i < terms.length; i++) {
     // if (terms[i].trim().length === 0) continue;
@@ -50,4 +50,3 @@ processQuery = function(query, mapFunction) {
       mapFunction(term, not, true, false);
     }
 };
-  

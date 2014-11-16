@@ -1,43 +1,59 @@
 if (Meteor.isClient) {
-  Template.snippets.initSnippet = function() {
-    var that = this;
-    Meteor.setTimeout(function() {
-      //If the snippet is already visible we don't need to initialize it
-      if ($("#snippet_"+that._id).css("display") !== "none") {
-        return;
-      }
+  Template.snippets.helpers({
 
-      var top  = that.y;
-      var left = that.x;
+    initSnippet: function() {
+      var that = this;
+      Meteor.setTimeout(function() {
+        //If the snippet is already visible we don't need to initialize it
+        if ($("#snippet_"+that._id).css("display") !== "none") {
+          return;
+        }
 
-      if (top === undefined) top = getRandomInt(0, 600);
-      if (left === undefined) left = getRandomInt(0, 600);
+        var top  = that.y;
+        var left = that.x;
 
-      $("#snippet_"+that._id).css({
-        display: 'inline-block',
-        top: top,
-        left: left
-      });
-      markSnippetDirty(that);
-    }, 1);
-  };
+        if (top === undefined) top = getRandomInt(0, 600);
+        if (left === undefined) left = getRandomInt(0, 600);
 
-  Template.snippets.snippets = function() {
-    var thisDevice = Session.get('thisDevice');
-    if (thisDevice === undefined) return [];
+        $("#snippet_"+that._id).css({
+          display: 'inline-block',
+          top: top,
+          left: left
+        });
+        markSnippetDirty(that);
+      }, 1);
+    },
 
-    var snippets = Snippets.find({ device: thisDevice.id });
-    return snippets.fetch();
-  };
+    snippets: function() {
+      var thisDevice = Session.get('thisDevice');
+      if (thisDevice === undefined) return [];
 
-  Template.snippets.otherDevices = function() {
-    return Session.get("otherDevices") || [];
-  };
+      var snippets = Snippets.find({ device: thisDevice.id });
+      return snippets.fetch();
+    },
+
+    otherDevices: function() {
+      return Session.get("otherDevices") || [];
+    },
+
+    thisDeviceBorderColorCSS: function() {
+      return window.thisDeviceBorderColorCSS();
+    },
+
+    deviceColorCSS: function() {
+      return 'background-color: '+window.deviceColorCSS(this);
+    },
+
+    deviceSizePositionCSS: function() {
+      return window.deviceSizePositionCSS(this);
+    }
+  });
 
   var frontSnippet;
   var dragLastPoint;
   var draggedSnippet;
   var highlightedIndicator;
+
   Template.snippets.events({
     'touchstart .snippet, mousedown .snippet': function(e) {
       if (frontSnippet !== undefined) frontSnippet.css({'z-index': ''});
@@ -63,7 +79,7 @@ if (Meteor.isClient) {
 
     'touchmove .snippetmover, mousemove .snippetmover, touchmove .deviceIndicator, mousemove .deviceIndicator': function(e) {
       // e.preventDefault();
-      
+
       if (dragLastPoint === undefined) return;
 
       var snippetID = this._id;
@@ -85,7 +101,7 @@ if (Meteor.isClient) {
       if ($(e.target).hasClass("deviceIndicator")) {
         highlightedIndicator = e.target;
         Template.deviceIndicators.highlightIndicator(e.target);
-      } else 
+      } else
       if ($(hitTarget).hasClass("deviceIndicator")) {
         highlightedIndicator = hitTarget;
         Template.deviceIndicators.highlightIndicator(hitTarget);
@@ -111,7 +127,7 @@ if (Meteor.isClient) {
       //   Template.deviceIndicators.sendThroughIndicator(e.target, snippetContent, this.sourcedoc);
       //   // var snippetID = $(draggedSnippet).attr("id").replace("snippet_", "");
       //   Snippets.remove({_id : this._id});
-      // } else 
+      // } else
       if ($(lastHitTarget).hasClass("deviceIndicator")) {
         Template.deviceIndicators.sendThroughIndicator(lastHitTarget, snippetContent, this.sourcedoc);
         // var snippetID = $(draggedSnippet).attr("id").replace("snippet_", "");
@@ -120,8 +136,8 @@ if (Meteor.isClient) {
         var thisDevice = Session.get('thisDevice');
         Logs.insert({
           timestamp  : Date.now(),
-          route      : Router.current().route.name,
-          deviceID   : thisDevice.id,  
+          route      : Router.current().route.getName(),
+          deviceID   : thisDevice.id,
           actionType : "deleteSnippet",
           actionSubsource : "share",
           snippetID  : this._id
@@ -157,8 +173,8 @@ if (Meteor.isClient) {
       var thisDevice = Session.get('thisDevice');
       Logs.insert({
         timestamp  : Date.now(),
-        route      : Router.current().route.name,
-        deviceID   : thisDevice.id,  
+        route      : Router.current().route.getName(),
+        deviceID   : thisDevice.id,
         actionType : "deleteSnippet",
         actionSource : "snippets",
         actionSubsource : "button",
@@ -175,20 +191,6 @@ if (Meteor.isClient) {
         }
       });
     }
-  });
-
-  Template.snippets.helpers({
-    'thisDeviceBorderColorCSS': function() {
-      return window.thisDeviceBorderColorCSS();
-    },
-
-    'deviceColorCSS': function() {
-      return 'background-color: '+window.deviceColorCSS(this);
-    },
-
-    'deviceSizePositionCSS': function() {
-      return window.deviceSizePositionCSS(this);
-    },
   });
 }
 
@@ -211,10 +213,10 @@ function markSnippetDirty(snippet) {
     var x = parseInt($("#snippet_"+snippet._id).css('left'));
     var existing = Snippets.findOne({_id : snippet._id});
 
-    if (existing.x === x && existing.y === y) return; 
+    if (existing.x === x && existing.y === y) return;
 
     Snippets.update(
-      {_id: snippet._id}, 
+      {_id: snippet._id},
       {$set: {
         y: y,
         x: x
@@ -224,8 +226,8 @@ function markSnippetDirty(snippet) {
     var thisDevice = Session.get('thisDevice');
     Logs.insert({
       timestamp  : Date.now(),
-      route      : Router.current().route.name,
-      deviceID   : thisDevice.id,  
+      route      : Router.current().route.getName(),
+      deviceID   : thisDevice.id,
       actionType : "movedSnippet",
       snippetID  : snippet._id,
       position   : {x: x, y: y}
@@ -267,8 +269,8 @@ var showSharePopup = function(el, snippet) {
       var thisDevice = Session.get('thisDevice');
       Logs.insert({
         timestamp       : Date.now(),
-        route           : Router.current().route.name,
-        deviceID        : thisDevice.id,  
+        route           : Router.current().route.getName(),
+        deviceID        : thisDevice.id,
         actionType      : "shareSnippet",
         actionSource    : "snippets",
         actionSubsource : "button",
@@ -278,8 +280,8 @@ var showSharePopup = function(el, snippet) {
       });
       Logs.insert({
         timestamp  : Date.now(),
-        route      : Router.current().route.name,
-        deviceID   : thisDevice.id,  
+        route      : Router.current().route.getName(),
+        deviceID   : thisDevice.id,
         actionType : "deleteSnippet",
         actionSource : "snippets",
         actionSubsource : "share",
@@ -287,10 +289,10 @@ var showSharePopup = function(el, snippet) {
       });
     });
     content.append(link);
-  } 
+  }
 
   // showPopover(el, content, {placement: "top", container: "body"});
-  
+
   $(el).popover('destroy');
   $(el).popover({
     trigger   : "manual",
@@ -325,7 +327,7 @@ var showSharePopup = function(el, snippet) {
   $(el).popover('show');
 };
 
-function getEventLocation(e, type) 
+function getEventLocation(e, type)
 {
   if (type === undefined) type = "page";
 

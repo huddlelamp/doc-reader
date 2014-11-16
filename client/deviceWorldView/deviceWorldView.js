@@ -8,51 +8,54 @@ Template.deviceWorldView.rendered = function() {
   });//
 };
 
-Template.deviceWorldView.deviceBorderColorCSS = function() {
-  var colorDeg = window.getDeviceColorDeg(this.id);
-  // var info = DeviceInfo.findOne({ _id: this.id });
-  // if (info === undefined || !info.colorDeg) return "";
+Template.deviceWorldView.helpers({
 
-  var color = window.degreesToColor(colorDeg);
+  deviceBorderColorCSS: function() {
+    var colorDeg = window.getDeviceColorDeg(this.id);
+    // var info = DeviceInfo.findOne({ _id: this.id });
+    // if (info === undefined || !info.colorDeg) return "";
 
-  return 'border-color: rgb('+color.r+', '+color.g+', '+color.b+');';
-};
+    var color = window.degreesToColor(colorDeg);
 
-Template.deviceWorldView.deviceBackgroundColorCSS = function() {
-  var colorDeg = window.getDeviceColorDeg(this.id);
-  // var info = DeviceInfo.findOne({ _id: this.id });
-  // if (info === undefined || !info.colorDeg) return "";
+    return 'border-color: rgb('+color.r+', '+color.g+', '+color.b+');';
+  },
 
-  var thisDevice = Session.get('thisDevice');
+  deviceBackgroundColorCSS: function() {
+    var colorDeg = window.getDeviceColorDeg(this.id);
+    // var info = DeviceInfo.findOne({ _id: this.id });
+    // if (info === undefined || !info.colorDeg) return "";
 
-  var color = window.degreesToColor(colorDeg);
+    var thisDevice = Session.get('thisDevice');
 
-  alpha = 0.35;
-  if (this.id === thisDevice.id) alpha = 0.1;
-  return 'background-color: rgba('+color.r+', '+color.g+', '+color.b+', '+alpha+');';
-};
+    var color = window.degreesToColor(colorDeg);
 
-Template.deviceWorldView.deviceSizeAndPosition = function() {
-  // var width  = $("#worldViewWrapper").width() / this.ratio.x;
-  // var height = $("#worldViewWrapper").height() / this.ratio.y;
-  // var x      = ($("#worldViewWrapper").width()) * this.topLeft.x;
-  // var y      = ($("#worldViewWrapper").height()) * this.topLeft.y;
-  
-  var width = (1/this.ratio.x)*100.0;
-  var height = (1/this.ratio.y)*100.0;
-  var x = this.topLeft.x*100.0;
-  var y = this.topLeft.y*100.0;
+    alpha = 0.35;
+    if (this.id === thisDevice.id) alpha = 0.1;
+    return 'background-color: rgba('+color.r+', '+color.g+', '+color.b+', '+alpha+');';
+  },
 
-  return 'width: '+width+'%; height: '+height+'%; top: '+y+'%; left: '+x+'%;';
-};
+  deviceSizeAndPosition: function() {
+    // var width  = $("#worldViewWrapper").width() / this.ratio.x;
+    // var height = $("#worldViewWrapper").height() / this.ratio.y;
+    // var x      = ($("#worldViewWrapper").width()) * this.topLeft.x;
+    // var y      = ($("#worldViewWrapper").height()) * this.topLeft.y;
 
-Template.deviceWorldView.thisDevice = function() {
-  return Session.get("thisDevice") || undefined;
-};
+    var width = (1/this.ratio.x)*100.0;
+    var height = (1/this.ratio.y)*100.0;
+    var x = this.topLeft.x*100.0;
+    var y = this.topLeft.y*100.0;
 
-Template.deviceWorldView.otherDevices = function() {
-  return Session.get("otherDevices") || [];
-};
+    return 'width: '+width+'%; height: '+height+'%; top: '+y+'%; left: '+x+'%;';
+  },
+
+  thisDevice: function() {
+    return Session.get("thisDevice") || undefined;
+  },
+
+  otherDevices: function() {
+    return Session.get("otherDevices") || [];
+  }
+});
 
 Template.deviceWorldView.events({
   'touchend #openWorldView': function() {
@@ -83,13 +86,13 @@ function showSendConfirmation(device, text) {
 
     // var top = parseInt($(device).position().top + deviceHeight/2.0) - eHeight/2.0;
     // var left = parseInt($(device).position().left + deviceWidth/2.0) - eWidth/2.0;
-    
+
     var top = $(document).height() / 2.0;
     var left = $(document).width() / 2.0;
-    $("#worldViewSendText").css({ 
-      opacity: 1.0, 
+    $("#worldViewSendText").css({
+      opacity: 1.0,
       position: "absolute",
-      // top: top, 
+      // top: top,
       // left: left
       bottom: 100,
       right: 50
@@ -155,11 +158,13 @@ Template.deviceWorldView.show = function() {
       showSendConfirmation($("#openWorldView"), "The selected text was sent to the device.");
 
       var thisDevice = Session.get('thisDevice');
-      var actionSource = (Router.current().route.name === "searchIndex") ? "detailDocument" : "snippets";
+      var routeName = Router.current().route.getName();
+
+      var actionSource = (routeName === "search.index" || routeName === "search.index.query") ? "detailDocument" : "snippets";
       Logs.insert({
         timestamp       : Date.now(),
-        route           : Router.current().route.name,
-        deviceID        : thisDevice.id,  
+        route           : Router.current().route.getName(),
+        deviceID        : thisDevice.id,
         actionType      : "shareSnippet",
         actionSource    : actionSource, //must be, only source for sharesnippet
         actionSubsource : "worldView",
@@ -184,8 +189,8 @@ Template.deviceWorldView.show = function() {
         var thisDevice = Session.get('thisDevice');
         Logs.insert({
           timestamp       : Date.now(),
-          route           : Router.current().route.name,
-          deviceID        : thisDevice.id,  
+          route           : Router.current().route.getName(),
+          deviceID        : thisDevice.id,
           actionType      : "shareDocument",
           actionSource    : "detailDocument",
           actionSubsource : "worldView",
@@ -196,14 +201,14 @@ Template.deviceWorldView.show = function() {
         //If no document is open but a query result is shown, send that
         var lastQuery = Session.get('lastQuery');
         var lastQueryPage = Session.get('lastQueryPage');
-        var route = Router.current().route.name;
+        var route = Router.current().route.getName();
         if (lastQuery !== undefined && route === "searchIndex") {
           // huddle.broadcast("dosearch", {target: targetID, query: lastQuery, page: lastQueryPage });
           // pulseDevice(this);
-          // 
+          //
           huddle.broadcast("go", {
             target: targetID,
-            template: "searchIndex",
+            route: "search.index.query",
             params: {
               _query: lastQuery,
               _page: lastQueryPage
@@ -214,8 +219,8 @@ Template.deviceWorldView.show = function() {
           var thisDevice = Session.get('thisDevice');
           Logs.insert({
             timestamp      : Date.now(),
-            route          : Router.current().route.name,
-            deviceID       : thisDevice.id,  
+            route          : Router.current().route.getName(),
+            deviceID       : thisDevice.id,
             actionType     : "shareResults",
             actionSource   : "search",
             actionSubsource: "worldView",
