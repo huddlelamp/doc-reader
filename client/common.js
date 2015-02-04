@@ -1,4 +1,11 @@
 if (Meteor.isClient) {
+   var getURLParameter = function(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+  };
+  
   Template.navigation.helpers({
     "active": function(path) {
       var router = Router.current();
@@ -10,8 +17,11 @@ if (Meteor.isClient) {
   });
 
   window.huddle = undefined;
-  var huddleHost = Meteor.settings.public.huddle.host;
-  var huddlePort = Meteor.settings.public.huddle.port;
+  var huddleHost = getURLParameter("host");
+  var huddlePort = getURLParameter("port");
+
+  if (!huddleHost) huddleHost = Meteor.settings.public.huddle.host;
+  if (!huddlePort) huddlePort = Meteor.settings.public.huddle.port;
 
   var firstProximityData = true;
   var needCheckColor = true;
@@ -87,18 +97,22 @@ if (Meteor.isClient) {
       amplify.store("huddleid", data.Identity);
       firstProximityData = false;
 
-      determineDeviceColor(data.Identity.toString());
+      if (getURLParameter("color")) {
+        DeviceInfo._upsert(data.Identity.toString(), { $set: { colorDeg: getURLParameter("color") } });
+      } else {
+        determineDeviceColor(data.Identity.toString());
 
-      //Because two devices loading at the same time can get the same color, we
-      //check the color after a random amount of time. If it's not unique, it will
-      //be changed
-      if (needCheckColor) {
-        needCheckColor = false;
+        //Because two devices loading at the same time can get the same color, we
+        //check the color after a random amount of time. If it's not unique, it will
+        //be changed
+        if (needCheckColor) {
+          needCheckColor = false;
 
-        var timeout = getRandomInt(3000, 8000);
-        Meteor.setTimeout(function() {
-          determineDeviceColor(data.Identity.toString());
-        }, timeout);
+          var timeout = getRandomInt(3000, 8000);
+          Meteor.setTimeout(function() {
+            determineDeviceColor(data.Identity.toString());
+          }, timeout);
+        }
       }
     }
 
