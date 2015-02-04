@@ -1,8 +1,21 @@
 if (Meteor.isClient) {
 
+  var getURLParameter = function(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+  };
+  
   window.huddle = undefined;
-  var huddleHost = Meteor.settings.public.huddle.host;
-  var huddlePort = Meteor.settings.public.huddle.port;
+  // var huddleHost = Meteor.settings.public.huddle.host;
+  // var huddlePort = Meteor.settings.public.huddle.port;
+  // 
+  var huddleHost = getURLParameter("huddleHost");
+  var huddlePort = getURLParameter("huddlePort");
+
+  if (!huddleHost) huddleHost = Meteor.settings.public.huddle.host;
+  if (!huddlePort) huddlePort = Meteor.settings.public.huddle.port;
 
   var firstProximityData = true;
   var needCheckColor = true;
