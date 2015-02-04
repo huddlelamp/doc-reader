@@ -11,8 +11,8 @@ if (Meteor.isClient) {
   // var huddleHost = Meteor.settings.public.huddle.host;
   // var huddlePort = Meteor.settings.public.huddle.port;
   // 
-  var huddleHost = getURLParameter("huddleHost");
-  var huddlePort = getURLParameter("huddlePort");
+  var huddleHost = getURLParameter("host");
+  var huddlePort = getURLParameter("port");
 
   if (!huddleHost) huddleHost = Meteor.settings.public.huddle.host;
   if (!huddlePort) huddlePort = Meteor.settings.public.huddle.port;
