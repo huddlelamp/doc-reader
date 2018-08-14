@@ -202,7 +202,7 @@ if (Meteor.isClient) {
               file: {
                 type: "attachment",
                 fields: {
-                  file: { term_vector: "with_positions_offsets", store: "yes" },
+                  content: { term_vector: "with_positions_offsets", store: "yes" },
                   title: { store: "yes" },
                   date: { store: "yes" },
                   author: { store: "yes" },

@@ -9,7 +9,7 @@ Package.describe({
 Package.on_use(function(api) {
   api.use("standard-app-packages", ["client", "server"]);
   api.use("http", ["client", "server"]);
-  api.use("iron-router", "client");
+  api.use("iron:router", "client");
   api.use("underscore", "server");
   api.use("file-info", "server");
 

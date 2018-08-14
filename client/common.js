@@ -1,3 +1,5 @@
+import { default as App } from './app';
+
 if (Meteor.isClient) {
    var getURLParameter = function(name) {
     name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
@@ -143,7 +145,7 @@ if (Meteor.isClient) {
         console.error(err);
       }
       else {
-        Template.detailDocumentTemplate.open(result.data);
+        App.detailDocument.open(result.data);
       }
     });
   });

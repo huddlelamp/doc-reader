@@ -4,16 +4,21 @@
 # but you can also edit it by hand.
 
 standard-app-packages
-bootstrap-3
-elasticsearch
-iron-router
-underscore
+mizzao:bootstrap-3
+alanning:elasticsearch
+iron:router
+underscore@1.0.10
 file-info
 elasticsearch-admin
-http
-fancybox
-accounts-password
-roles
-accounts-ui-bootstrap-3
-accounts-admin-ui-bootstrap-3
+http@1.4.1
+sinda:fancybox
+accounts-password@1.5.1
+alanning:roles
+accounts-ui@1.3.0
+mrt:accounts-admin-ui-bootstrap-3
 amplify
+ecmascript@0.11.1
+less@2.7.12
+jquery
+huddle:client
+blaze

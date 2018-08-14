@@ -1,3 +1,5 @@
+import { default as App } from '../app';
+
 if (Meteor.isClient) {
 
   var SEARCH_RESULTS_PER_PAGE = 10;
@@ -115,13 +117,13 @@ if (Meteor.isClient) {
     });
   };
 
-  Template.searchIndex.rendered = function() {
+  Template.searchIndex.onRendered(function() {
     Template.searchIndex.reflectURL();
 
     $("body").on("mouseup", function(e) {
       Session.set('querySuggestions', []);
     });
-  };
+  });
 
   Template.searchIndex.helpers({
 
@@ -305,7 +307,7 @@ if (Meteor.isClient) {
           console.error(err);
         }
         else {
-          Template.detailDocumentTemplate.open(result.data);
+          App.detailDocument.open(result.data);
         }
       });
     },
@@ -317,7 +319,7 @@ if (Meteor.isClient) {
           console.error(err);
         }
         else {
-          Template.detailDocumentTemplate.open(result.data, that.toString());
+          App.detailDocument.open(result.data, that.toString());
         }
       });
     },

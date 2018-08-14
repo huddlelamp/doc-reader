@@ -2,6 +2,14 @@ html, body {
   height: 100%;
 }
 
+.add-dummy-snippet {
+  position: absolute;
+  top: 100px;
+  left: 100px;
+  font-size: 2em;
+  background-color: magenta;
+}
+
 .snippet {
   display: none; 
   position: absolute;
