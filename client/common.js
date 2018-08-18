@@ -1,15 +1,15 @@
 import { default as App } from './app';
 
 if (Meteor.isClient) {
-   var getURLParameter = function(name) {
+  var getURLParameter = function (name) {
     name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
     var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
-        results = regex.exec(location.search);
+      results = regex.exec(location.search);
     return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
   };
-  
+
   Template.navigation.helpers({
-    "active": function(path) {
+    "active": function (path) {
       var router = Router.current();
       if (router && router.route.name === path) {
         return "active";
@@ -19,16 +19,26 @@ if (Meteor.isClient) {
   });
 
   window.huddle = undefined;
-  var huddleHost = getURLParameter("host");
-  var huddlePort = getURLParameter("port");
 
-  if (!huddleHost) huddleHost = Meteor.settings.public.huddle.host;
-  if (!huddlePort) huddlePort = Meteor.settings.public.huddle.port;
+  let huddleHost = "localhost";
+  let huddlePort = 1948;
+  if (Meteor.settings.public.huddle) {
+    const huddleConfig = Meteor.settings.public.huddle;
+    huddleHost = huddleConfig.host;
+    huddlePort = huddleConfig.port;
+  }
+
+  if (getURLParameter("host")) {
+    huddleHost = getURLParameter("host");
+  }
+  if (getURLParameter("port")) {
+    huddlePort = getURLParameter("port");
+  }
 
   var firstProximityData = true;
   var needCheckColor = true;
 
-  var transformDeviceData = function(data) {
+  var transformDeviceData = function (data) {
     var newData = {
       id: data.Identity.toString(),
       center: {
@@ -50,12 +60,12 @@ if (Meteor.isClient) {
       angle: data.Orientation || 0,
     };
 
-    newData.width = 1.0/newData.ratio.x;
-    newData.height = 1.0/newData.ratio.y;
+    newData.width = 1.0 / newData.ratio.x;
+    newData.height = 1.0 / newData.ratio.y;
 
     newData.topLeft = {
-      x: newData.center.x - newData.width/2.0,
-      y: newData.center.y - newData.height/2.0
+      x: newData.center.x - newData.width / 2.0,
+      y: newData.center.y - newData.height / 2.0
     };
 
     newData.topRight = {
@@ -83,64 +93,64 @@ if (Meteor.isClient) {
 
   var existingID = amplify.store("huddleid");
   if (existingID === undefined) existingID = null;
-  console.log("EXISTING ID: "+existingID);
+  // console.log("EXISTING ID: " + existingID);
 
   // var start = Date.now();
-  huddle = Huddle.client({ glyphId: existingID+"" })
-  .on("devicelost", function(a) {
-    console.log("DEVICE WAS LOST");
-    console.log(a);
-  })
-  .on("proximity", function(data) {
-    // if (capFPS(1)) return;
+  huddle = Huddle.client({ glyphId: existingID + "" })
+    .on("devicelost", function (a) {
+      // console.log("DEVICE WAS LOST");
+      console.log(a);
+    })
+    .on("proximity", function (data) {
+      // if (capFPS(1)) return;
 
-    if (firstProximityData && data.Identity) {
-      console.log("MY ID: "+data.Identity);
-      amplify.store("huddleid", data.Identity);
-      firstProximityData = false;
+      if (firstProximityData && data.Identity) {
+        // console.log("MY ID: " + data.Identity);
+        amplify.store("huddleid", data.Identity);
+        firstProximityData = false;
 
-      if (getURLParameter("color")) {
-        DeviceInfo._upsert(data.Identity.toString(), { $set: { colorDeg: getURLParameter("color") } });
-      } else {
-        determineDeviceColor(data.Identity.toString());
+        if (getURLParameter("color")) {
+          DeviceInfo._upsert(data.Identity.toString(), { $set: { colorDeg: getURLParameter("color") } });
+        } else {
+          determineDeviceColor(data.Identity.toString());
 
-        //Because two devices loading at the same time can get the same color, we
-        //check the color after a random amount of time. If it's not unique, it will
-        //be changed
-        if (needCheckColor) {
-          needCheckColor = false;
+          //Because two devices loading at the same time can get the same color, we
+          //check the color after a random amount of time. If it's not unique, it will
+          //be changed
+          if (needCheckColor) {
+            needCheckColor = false;
 
-          var timeout = getRandomInt(3000, 8000);
-          Meteor.setTimeout(function() {
-            determineDeviceColor(data.Identity.toString());
-          }, timeout);
+            var timeout = getRandomInt(3000, 8000);
+            Meteor.setTimeout(function () {
+              determineDeviceColor(data.Identity.toString());
+            }, timeout);
+          }
         }
       }
-    }
 
-    // console.log(data);
-    Session.set('thisDevice', transformDeviceData(data));
-    // console.log(Session.get('thisDevice'));
+      // console.log(data);
+      Session.set('thisDevice', transformDeviceData(data));
+      // console.log(Session.get('thisDevice'));
 
-    var otherDevices = [];
-    data.Presences.forEach(function(presence) {
-      otherDevices.push(transformDeviceData(presence));
-    });
-    Session.set('otherDevices', otherDevices);
+      var otherDevices = [];
+      data.Presences.forEach(function (presence) {
+        otherDevices.push(transformDeviceData(presence));
+      });
+      Session.set('otherDevices', otherDevices);
 
-  }); // end .on("proximity")
+    }); // end .on("proximity")
 
   // huddle.reconnect = false;
   huddle.connect(huddleHost, huddlePort);
 
-  Huddle.on("showdocument", function(data) {
+  Huddle.on("showdocument", function (data) {
     //If this page has no detail document template, we are screwed :-)
     if (!Template.detailDocumentTemplate) return;
 
     var thisDevice = Session.get('thisDevice');
     if (data.target !== thisDevice.id) return;
 
-    ElasticSearch.get(data.documentID, function(err, result) {
+    ElasticSearch.get(data.documentID, function (err, result) {
       if (err) {
         console.error(err);
       }
@@ -150,7 +160,7 @@ if (Meteor.isClient) {
     });
   });
 
-  Huddle.on("addtextsnippet", function(data) {
+  Huddle.on("addtextsnippet", function (data) {
     var thisDevice = Session.get('thisDevice');
     if (data.target !== thisDevice.id) return;
 
@@ -158,7 +168,7 @@ if (Meteor.isClient) {
     Snippets.insert({ device: thisDevice.id, sourcedoc: data.doc, text: data.snippet });
   });
 
-  Huddle.on("dosearch", function(data) {
+  Huddle.on("dosearch", function (data) {
     var thisDevice = Session.get('thisDevice');
     if (data.target !== thisDevice.id) return;
 
@@ -166,7 +176,7 @@ if (Meteor.isClient) {
     search(data.query, data.page);
   });
 
-  Huddle.on("go", function(data) {
+  Huddle.on("go", function (data) {
     var thisDevice = Session.get('thisDevice');
     if (data.target !== thisDevice.id) return;
 
@@ -180,7 +190,7 @@ function determineDeviceColor(deviceID) {
   var needColor = true;
   var thisInfos = DeviceInfo.findOne({ _id: deviceID });
   if (thisInfos !== undefined) {
-    var thisColorInfos = DeviceInfo.find({ colorDeg: thisInfos.colorDeg}).fetch();
+    var thisColorInfos = DeviceInfo.find({ colorDeg: thisInfos.colorDeg }).fetch();
     if (thisColorInfos.length === 1) {
       needColor = false;
     }
@@ -200,13 +210,13 @@ function determineDeviceColor(deviceID) {
 
     //Grab all colors that have been distributed already and divide them by the
     //four sectors of the color wheel
-    var infos = DeviceInfo.find({}, {sort: ["colorDeg", "asc"]}).fetch();
+    var infos = DeviceInfo.find({}, { sort: ["colorDeg", "asc"] }).fetch();
     var existingColors = { 0: [], 1: [], 2: [], 3: [] };
-    for (var i=0; i<infos.length; i++) {
+    for (var i = 0; i < infos.length; i++) {
       var currentColor = infos[i].colorDeg;
       var sector;
-      if (currentColor >= 0   && currentColor < 90)  sector = 0;
-      if (currentColor >= 90  && currentColor < 180) sector = 1;
+      if (currentColor >= 0 && currentColor < 90) sector = 0;
+      if (currentColor >= 90 && currentColor < 180) sector = 1;
       if (currentColor >= 180 && currentColor < 270) sector = 2;
       if (currentColor >= 270 && currentColor < 369) sector = 3;
 
@@ -256,7 +266,7 @@ function determineDeviceColor(deviceID) {
     //If three sectors are larger than a fourth, we must pick the remaining one
     if (largestSectors.length === 3) {
       var sectorsLeft = [0, 1, 2, 3];
-      for (var i=0; i<largestSectors.length; i++) {
+      for (var i = 0; i < largestSectors.length; i++) {
         var index = sectorsLeft.indexOf(largestSectors[i]);
         if (index > -1) {
           sectorsLeft.splice(index, 1);
@@ -283,17 +293,17 @@ function determineDeviceColor(deviceID) {
       newColorDeg = smallestSectorColorDeg + 45;
     } else {
       var maxDiff = 0;
-      for (var i=0; i<existingColors[targetSector].length; i++) {
+      for (var i = 0; i < existingColors[targetSector].length; i++) {
         var currentColorDeg = existingColors[targetSector][i];
 
         var nextColor = largestSectorColorDeg;
-        if ((i+1) < existingColors[targetSector].length) {
-          nextColor = existingColors[targetSector][i+1];
+        if ((i + 1) < existingColors[targetSector].length) {
+          nextColor = existingColors[targetSector][i + 1];
         }
 
-        var diff = nextColor-currentColorDeg;
+        var diff = nextColor - currentColorDeg;
         if (diff > maxDiff) {
-          newColorDeg = currentColorDeg + diff/2.0;
+          newColorDeg = currentColorDeg + diff / 2.0;
           maxDiff = diff;
         }
       }
@@ -304,7 +314,7 @@ function determineDeviceColor(deviceID) {
 }
 
 var cachedColorDegs = {};
-window.getDeviceColorDeg = function(deviceID) {
+window.getDeviceColorDeg = function (deviceID) {
   if (cachedColorDegs[deviceID]) {
     return cachedColorDegs[deviceID];
   }
@@ -312,28 +322,28 @@ window.getDeviceColorDeg = function(deviceID) {
   // var info = DeviceInfo.findOne({ _id: deviceID });
   // if (info === undefined || info.colorDeg === undefined) return 0;
 
-  var cursor = DeviceInfo.find({_id: deviceID });
+  var cursor = DeviceInfo.find({ _id: deviceID });
   var info = cursor.fetch()[0];
   if (info === undefined || info.colorDeg === undefined) return 0;
 
-  var observer = function(deviceID) {
-    return function(newDocument) {
+  var observer = function (deviceID) {
+    return function (newDocument) {
       if (newDocument === undefined || newDocument.colorDeg === undefined) return;
       cachedColorDegs[deviceID] = newDocument.colorDeg;
     };
   };
 
   cursor.observe({
-    added   : observer(deviceID),
-    changed : observer(deviceID),
-    removed : observer(deviceID),
+    added: observer(deviceID),
+    changed: observer(deviceID),
+    removed: observer(deviceID),
   });
 
   cachedColorDegs[deviceID] = info.colorDeg;
   return info.colorDeg;
 };
 
-window.degreesToColor = function(deg, ensureVisibility) {
+window.degreesToColor = function (deg, ensureVisibility) {
   if (ensureVisibility === undefined) ensureVisibility = true;
 
   var color = new tinycolor({
@@ -366,7 +376,7 @@ function capFPS(fps) {
   var now = new Date();
   var timeDiff = now.getTime() - lastFPSCap.getTime();
 
-  if (timeDiff < (1000.0/fps)) {
+  if (timeDiff < (1000.0 / fps)) {
     return true;
   } else {
     lastFPSCap = now;

@@ -11,12 +11,9 @@ html, body {
 }
 
 .snippet {
-  display: none; 
   position: absolute;
   top: 0;
   left: 0;
-  /*margin: 20px; */
-  /*padding: 10px; */
   border: 2px solid lightgray; 
   width: 350px; 
   height: 275px;

@@ -1,218 +1,175 @@
+import Hammer from 'hammerjs';
+
 import { default as App } from '../app';
 
-if (Meteor.isClient) {
-  Template.snippets.helpers({
-    initSnippet: function () {
-      var that = this;
-      Meteor.setTimeout(function () {
-        //If the snippet is already visible we don't need to initialize it
-        if ($("#snippet_" + that._id).css("display") !== "none") {
-          return;
-        }
-
-        var top = that.y;
-        var left = that.x;
-
-        if (top === undefined) top = getRandomInt(0, 600);
-        if (left === undefined) left = getRandomInt(0, 600);
-
-        $("#snippet_" + that._id).css({
-          display: 'inline-block',
-          top: top,
-          left: left
-        });
-        markSnippetDirty(that);
-      }, 1);
-    },
-
-    snippets: function () {
-      var thisDevice = Session.get('thisDevice');
-      if (thisDevice === undefined) return [];
-
-      var snippets = Snippets.find({ device: thisDevice.id });
-      return snippets.fetch();
-    },
-
-    otherDevices: function () {
-      return Session.get("otherDevices") || [];
+const updatePosition = (id, x, y) => {
+  Snippets.update(
+    { _id: id },
+    {
+      $set: {
+        x: x,
+        y: y
+      }
     }
-  });
-
-  var frontSnippet;
-  var dragLastPoint;
-  var draggedSnippet;
-  var highlightedIndicator;
-  Template.snippets.events({
-    'click .add-dummy-snippet': function(e) {
-      Snippets.insert({
-        device: Session.get("thisDevice").id,
-        sourcedoc: undefined,
-        text: "Hello World"
-      });
-    },
-
-    'pointerdown .snippet': function (e) {
-      if (frontSnippet !== undefined) frontSnippet.css({ 'z-index': '' });
-
-      var snippetID = this._id;
-      frontSnippet = $("#snippet_" + snippetID);
-      frontSnippet.css({ 'z-index': 7011 });
-    },
-
-    'pointerdown .snippetmover': function (e) {
-      e.preventDefault();
-
-      // if (frontSnippet !== undefined) frontSnippet.css({'z-index': ''});
-
-      var snippetID = this._id;
-
-      draggedSnippet = $("#snippet_" + snippetID);
-      dragLastPoint = getEventLocation(e, "client");
-
-      // frontSnippet = draggedSnippet;
-      // frontSnippet.css({'z-index': 7012});
-    },
-
-    'pointermove .snippetmover, pointermove .deviceIndicator': function (e) {
-      // e.preventDefault();
-
-      // The pointermove events also occur when the pointer hovers
-      if (typeof e.pressure !== 'undefined' && e.pressure <= 0) {
-        return;
-      }
-
-      if (dragLastPoint === undefined) return;
-
-      var snippetID = this._id;
-      var snippet = $("#snippet_" + snippetID);
-
-      var currentPoint = getEventLocation(e, "client");
-      var deltaX = currentPoint.x - dragLastPoint.x;
-      var deltaY = currentPoint.y - dragLastPoint.y;
-
-      dragLastPoint = currentPoint;
-
-      snippet.css({
-        top: parseInt(snippet.css('top')) + deltaY,
-        left: parseInt(snippet.css('left')) + deltaX
-      });
-      markSnippetDirty(this);
-
-      var hitTarget = document.elementFromPoint(currentPoint.x, currentPoint.y);
-      if ($(e.target).hasClass("deviceIndicator")) {
-        highlightedIndicator = e.target;
-        App.deviceIndicators.highlightIndicator(e.target);
-      } else
-        if ($(hitTarget).hasClass("deviceIndicator")) {
-          highlightedIndicator = hitTarget;
-          App.deviceIndicators.highlightIndicator(hitTarget);
-        } else if (highlightedIndicator !== undefined) {
-          App.deviceIndicators.unhighlightIndicator(highlightedIndicator);
-          highlightedIndicator = undefined;
-        }
-
-      if ($(hitTarget).attr("id") === "openWorldView") {
-
-      }
-    },
-
-    'pointerup .snippet': function(e) {
-      dragLastPoint = undefined;
-      console.log('here in snipp');
-    },
-
-    'pointerup .snippetmover, pointerup .deviceIndicator': function (e, tmpl) {
-      var lastHitTarget = document.elementFromPoint(dragLastPoint.x, dragLastPoint.y);
-      dragLastPoint = undefined;
-
-      var snippetContent = $(draggedSnippet).children(".snippetcontent").text();
-
-      //Check if snippet is let go above a device indicator. If so, move the snippet to that device
-      // if ($(e.target).hasClass("deviceIndicator")) {
-      //   // var snippetData = Snippets.findOne({_id:snippetID});
-      //   App.deviceIndicators.sendThroughIndicator(e.target, snippetContent, this.sourcedoc);
-      //   // var snippetID = $(draggedSnippet).attr("id").replace("snippet_", "");
-      //   Snippets.remove({_id : this._id});
-      // } else 
-      if ($(lastHitTarget).hasClass("deviceIndicator")) {
-        App.deviceIndicators.sendThroughIndicator(lastHitTarget, snippetContent, this.sourcedoc);
-        var snippetID = $(draggedSnippet).attr("id").replace("snippet_", "");
-        Snippets.remove({ _id: snippetID });
-
-        var thisDevice = Session.get('thisDevice');
-        Logs.insert({
-          timestamp: Date.now(),
-          route: Router.current().route.name,
-          deviceID: thisDevice.id,
-          actionType: "deleteSnippet",
-          actionSubsource: "share",
-          snippetID: snippetID
-        });
-      }
-
-      //Check if the snippet is let go above the open world view button. If so, open the world view
-      //to share this snippet
-      if ($(lastHitTarget).attr("id") === "openWorldView") {
-        Session.set("worldViewSnippetDoc", this.sourcedoc);
-        Session.set("worldViewSnippetToSend", snippetContent);
-        Session.set("worldViewSnippetRemove", this._id);
-        $("#openWorldView").click();
-      }
-
-      // draggedSnippet.css({'z-index': ''});
-      draggedSnippet = undefined;
-    },
-
-    'pointerup .snippetsharer': function (e) {
-      showSharePopup(e.target, this);
-    },
-
-    'pointerup .snippetdeleter': function (e) {
-      var snippetID = this._id;
-      $(e.target).hide();
-      $("#snippet_" + snippetID + " .snippetdeleterconfirmation").show({ duration: 400 });
-    },
-
-    'pointerup .snippetdeleterconfirmation .btn-danger': function (e) {
-      Snippets.remove({ _id: this._id });
-
-      var thisDevice = Session.get('thisDevice');
-      Logs.insert({
-        timestamp: Date.now(),
-        route: Router.current().route.name,
-        deviceID: thisDevice.id,
-        actionType: "deleteSnippet",
-        actionSource: "snippets",
-        actionSubsource: "button",
-        snippetID: this._id
-      });
-    },
-
-    'pointerup .snippetdeleterconfirmation .btn-cancel': function (e) {
-      var snippetID = this._id;
-      $("#snippet_" + snippetID + " .snippetdeleterconfirmation").hide({
-        duration: 400,
-        complete: function () {
-          $("#snippet_" + snippetID + " .snippetdeleter").show();
-        }
-      });
-    }
-  });
-
-  Template.snippets.helpers({
-    'thisDeviceBorderColorCSS': function () {
-      return window.thisDeviceBorderColorCSS();
-    },
-
-    'deviceColorCSS': function () {
-      return 'background-color: ' + window.deviceColorCSS(this);
-    },
-
-    'deviceSizePositionCSS': function () {
-      return window.deviceSizePositionCSS(this);
-    },
-  });
+  );
 }
+
+Template.snippet.onRendered(function () {
+  const element = this.firstNode;
+  const data = this.data;
+
+  const computedStyle = window.getComputedStyle(element);
+  const width = parseInt(computedStyle.width);
+  const height = parseInt(computedStyle.height);
+
+  let x = data.x;
+  let y = data.y;
+  // check for typeof because 0px position are valid, but would
+  // be true if check is if (!top) { ... }
+  if (typeof x === 'undefined') {
+    x = getRandomInt(0, window.innerWidth - width);
+  }
+  if (typeof y === 'undefined') {
+    y = getRandomInt(0, window.innerHeight - height);
+  }
+
+  updatePosition(data._id, x, y);
+
+  // initialize hammer if it doesn't exist yet
+  if (!element.__hammer) {
+    const hammerTime = element.__hammer = new Hammer(element);
+
+    let x;
+    let y;
+    hammerTime.on('panstart', function (event) {
+      x = parseInt(element.style.left);
+      y = parseInt(element.style.top);
+    });
+
+    hammerTime.on('panmove', function (event) {
+      const newX = x + event.deltaX;
+      const newY = y + event.deltaY;
+      updatePosition(data._id, newX, newY);
+    });
+
+    hammerTime.on('panend', function (event) {
+      console.log('event', event, event.srcEvent.currentTarget);
+
+      const element = document.elementFromPoint(event.center.x, event.center.y);
+      console.log(element);
+
+      if (element.classList.contains("deviceIndicator")) {
+        App.deviceIndicators.sendThroughIndicator(element, data.text, data.sourcedoc);
+        Snippets.remove({ _id: data._id });
+      }
+    });
+  }
+});
+
+Template.snippet.onDestroyed(function () {
+  // // This does not work because firstNode doesn't exist anymore at this point
+  // const element = this.firstNode;
+  // if (element.__hammer) {
+  //   element.__hammer.destroy();
+  // }
+});
+
+Template.snippet.events({
+  'pointerdown .snippet': function (e) {
+    if (frontSnippet !== undefined) frontSnippet.css({ 'z-index': '' });
+
+    var snippetID = this._id;
+    frontSnippet = $("#snippet_" + snippetID);
+    frontSnippet.css({ 'z-index': 7011 });
+  },
+
+  'pointerup .snippetsharer': function (e) {
+    showSharePopup(e.target, this);
+  },
+
+  'pointerup .snippetdeleter': function (e) {
+    var snippetID = this._id;
+    $(e.target).hide();
+    $("#snippet_" + snippetID + " .snippetdeleterconfirmation").show({ duration: 400 });
+  },
+
+  'pointerup .snippetdeleterconfirmation .btn-danger': function (e) {
+    Snippets.remove({ _id: this._id });
+
+    var thisDevice = Session.get('thisDevice');
+    Logs.insert({
+      timestamp: Date.now(),
+      route: Router.current().route.name,
+      deviceID: thisDevice.id,
+      actionType: "deleteSnippet",
+      actionSource: "snippets",
+      actionSubsource: "button",
+      snippetID: this._id
+    });
+  },
+
+  'pointerup .snippetdeleterconfirmation .btn-cancel': function (e) {
+    var snippetID = this._id;
+    $("#snippet_" + snippetID + " .snippetdeleterconfirmation").hide({
+      duration: 400,
+      complete: function () {
+        $("#snippet_" + snippetID + " .snippetdeleter").show();
+      }
+    });
+  }
+})
+
+Template.snippets.helpers({
+  snippets: function () {
+    var thisDevice = Session.get('thisDevice');
+    if (thisDevice === undefined) return [];
+
+    var snippets = Snippets.find({ device: thisDevice.id });
+    return snippets.fetch();
+  },
+
+  otherDevices: function () {
+    return Session.get("otherDevices") || [];
+  }
+});
+
+var frontSnippet;
+var dragLastPoint;
+var draggedSnippet;
+var highlightedIndicator;
+Template.snippets.events({
+  'click .add-dummy-snippet'(e) {
+    console.log('click here');
+
+    Snippets.insert({
+      device: Session.get("thisDevice").id,
+      sourcedoc: undefined,
+      text: "Hello World"
+    });
+  },
+
+  'pointerenter .deviceIndicator': function (e) {
+    App.deviceIndicators.highlightIndicator(e.currentTarget);
+  },
+
+  'pointerout .deviceIndicator': function (e) {
+    App.deviceIndicators.unhighlightIndicator(e.currentTarget);
+  },
+});
+
+Template.snippets.helpers({
+  'thisDeviceBorderColorCSS': function () {
+    return window.thisDeviceBorderColorCSS();
+  },
+
+  'deviceColorCSS': function () {
+    return 'background-color: ' + window.deviceColorCSS(this);
+  },
+
+  'deviceSizePositionCSS': function () {
+    return window.deviceSizePositionCSS(this);
+  },
+});
 
 var removeSnippet = function (snippetID) {
   Snippets.remove({ _id: snippetID });

@@ -36,7 +36,7 @@ if (Meteor.isClient) {
     if (must.length > 0) bool.must = must;
     if (must_not.length > 0) bool.must_not = must_not;
 
-    console.log(bool);
+    // console.log(bool);
 
     var q = {
       fields: ["file", "name"],
@@ -50,7 +50,7 @@ if (Meteor.isClient) {
         }
       }
     };
-    console.log(q);
+    // console.log(q);
 
     ElasticSearch.query(q, function(err, result) {
       if (err) {
@@ -130,7 +130,7 @@ if (Meteor.isClient) {
     results: function() {
       var results = Session.get("results") || [];
 
-      console.log(results);
+      // console.log(results);
 
       return results;
     },
