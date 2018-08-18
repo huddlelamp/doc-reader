@@ -1,11 +1,10 @@
 DeviceInfo = new Meteor.Collection("device-info");
 
 DeviceInfo._upsert = function(id, changes) {
-  var exists = !!(DeviceInfo.findOne({ _id:id }));
+  var exists = !!(DeviceInfo.findOne({ _id: id }));
 
-  if (exists === false) {
-    var newDoc = { _id : id };
-    DeviceInfo.insert(newDoc);
+  if (!exists) {
+    DeviceInfo.insert({ _id : id });
   }
 
   return DeviceInfo.update(id, changes);

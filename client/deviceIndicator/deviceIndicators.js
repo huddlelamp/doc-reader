@@ -1,4 +1,5 @@
 import { default as App } from '../app';
+import { urlParams } from '../utils';
 
 Template.deviceIndicators.onRendered(function () {
   $(document).ready(function () {
@@ -50,9 +51,11 @@ Template.deviceIndicators.helpers({
     var left;
     var indicatorSize = MIN_INDICATOR_SIZE;
 
-    var width = $(window).width();
-    var height = $(window).height();
-    var angle = (otherDevice.angle % 360) + 90;
+    // Allow to set the device indicator offset in the url.
+    const angleOffset = +urlParams.get("deviceIndicatorOffset", 0);
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    var angle = ((otherDevice.angle + angleOffset) % 360);
 
     var w2 = width / 2;
     var h2 = height / 2;

@@ -1,11 +1,9 @@
 import { default as App } from './app';
+import { urlParams } from './utils';
 
 if (Meteor.isClient) {
   var getURLParameter = function (name) {
-    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
-      results = regex.exec(location.search);
-    return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+    return urlParams.get(name);
   };
 
   Template.navigation.helpers({

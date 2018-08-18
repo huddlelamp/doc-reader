@@ -62,6 +62,9 @@ Template.snippet.onRendered(function () {
         App.deviceIndicators.sendThroughIndicator(element, data.text, data.sourcedoc);
         Snippets.remove({ _id: data._id });
       }
+      else if (element.getAttribute("id") == "openWorldView") {
+        element.click();
+      }
     });
   }
 });
