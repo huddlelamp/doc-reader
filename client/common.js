@@ -89,7 +89,12 @@ if (Meteor.isClient) {
     return newData;
   }; //end transformDeviceData
 
-  var existingID = amplify.store("huddleid");
+  
+  var existingID = urlParams.get("huddleId", undefined);
+  if (!existingID) {
+    existingID = amplify.store("huddleid");
+  }
+
   if (existingID === undefined) existingID = null;
   // console.log("EXISTING ID: " + existingID);
 

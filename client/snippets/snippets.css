@@ -3,6 +3,7 @@ html, body {
 }
 
 .add-dummy-snippet {
+  display: none;
   position: absolute;
   top: 100px;
   left: 100px;

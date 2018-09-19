@@ -136,6 +136,14 @@ Template.snippets.helpers({
   }
 });
 
+window.addSnippet = function(text) {
+  Snippets.insert({
+    device: Session.get("thisDevice").id,
+    sourcedoc: undefined,
+    text: text
+  });
+};
+
 var frontSnippet;
 var dragLastPoint;
 var draggedSnippet;

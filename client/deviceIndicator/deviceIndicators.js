@@ -55,7 +55,13 @@ Template.deviceIndicators.helpers({
     const angleOffset = +urlParams.get("deviceIndicatorOffset", 0);
     var width = window.innerWidth;
     var height = window.innerHeight;
-    var angle = ((otherDevice.angle + angleOffset) % 360);
+    var angle = ((otherDevice.angle + 360 + angleOffset) % 360);
+
+    console.debug({
+      angle,
+      angleOffset,
+      otherAngle: otherDevice.angle
+    });
 
     var w2 = width / 2;
     var h2 = height / 2;
